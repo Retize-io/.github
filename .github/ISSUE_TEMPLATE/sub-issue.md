@@ -1,3 +1,9 @@
+---
+name: Sub-issue
+about: Criar uma issue de execução vinculada a um épico ou issue principal
+title: "[Sub-issue] "
+---
+
 # Template — Sub-issue
 
 > Issue de execução criada no repositório responsável pela implementação.
