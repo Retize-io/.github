@@ -1,3 +1,9 @@
+---
+name: Bug report
+about: Reportar um bug com contexto, impacto, evidência e validação
+title: "[Bug] "
+---
+
 # Template — Bug Report
 
 > Documento usado para reportar bugs que precisam de clareza de reprodução, impacto, evidência e validação.
