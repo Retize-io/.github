@@ -1,160 +1,91 @@
 ---
 name: Sub-issue
-about: Criar uma issue de execução vinculada a um épico ou issue principal
+about: Criar uma issue de execucao vinculada a um epico ou issue principal
 title: "[Sub-issue] "
 ---
 
-# Template — Sub-issue
+<!--
+Escreva a sub-issue como uma unidade pequena de execucao.
+Comece pelo resumo: ele e a primeira informacao lida por webhooks, notificacoes e LLMs.
 
-> Issue de execução criada no repositório responsável pela implementação.
-> Deve sempre estar vinculada a uma issue principal/épico no `retize-docs`.
+LLM/context:
+type: sub-issue
+summary:
+linked_epic:
+objective:
+in_scope:
+out_of_scope:
+acceptance_criteria:
+technical_validation:
+technical_context:
+impacted_areas:
+definition_of_done:
+-->
 
----
+## Resumo da entrega
 
-## 1. Épico relacionado
+<!-- Descreva em 1-3 frases o que esta sub-issue entrega e por que ela existe. -->
 
-Informe o link da issue principal no `retize-docs`.
 
-**Exemplo:**
+## Epico relacionado
 
-Épico relacionado: `retize-docs#123 — Nova tela de dados 1st party no Retize Analytics`
+<!-- Link da issue principal/epico no retize-docs. -->
 
----
 
-## 2. Objetivo da sub-issue
+## Objetivo
 
-Descreva o que esta sub-issue precisa entregar especificamente.
+<!-- Resultado especifico esperado ao concluir esta sub-issue. -->
 
-**Exemplo:**
 
-Criar a interface da nova tela de dados 1st party dentro do Retize Analytics no `retize-monorepo`.
-
-Essa sub-issue deve entregar a estrutura visual inicial da tela, com cards de indicadores, área de evolução da base e seções para origem dos dados, atributos disponíveis e consentimento.
-
----
-
-## 3. Contexto técnico
-
-Inclua informações técnicas relevantes para execução dentro deste repositório.
-
-**Exemplo:**
-
-A implementação será feita no `retize-monorepo`, dentro do módulo de Analytics.
-
-A tela deverá seguir os padrões visuais e estruturais já utilizados nas demais telas do Analytics, reaproveitando componentes existentes sempre que possível.
-
-Nesta primeira versão, a interface pode consumir dados mockados ou dados vindos de endpoint já disponível, dependendo da disponibilidade da sub-issue de backend/dados.
-
-A tela deve estar preparada para receber os seguintes blocos de informação:
-
-* total de contatos/fãs disponíveis;
-* evolução da base ao longo do tempo;
-* origem dos dados;
-* principais atributos disponíveis;
-* indicadores de consentimento;
-* status geral da qualidade dos dados.
-
----
-
-## 4. Escopo da execução
+## Escopo
 
 ### Dentro do escopo
 
-Liste o que entra nesta sub-issue.
+<!-- Liste o que deve ser entregue nesta sub-issue. -->
 
-**Exemplo:**
-
-* Criar rota/tela de dados 1st party no módulo Analytics.
-* Criar layout inicial da tela.
-* Criar cards de indicadores principais.
-* Criar área para gráfico de evolução da base.
-* Criar seção de origem dos dados.
-* Criar seção de atributos disponíveis.
-* Criar seção de consentimento, se aplicável.
-* Garantir responsividade mínima conforme padrão atual do Analytics.
-* Reaproveitar componentes existentes do `retize-monorepo` quando possível.
+-
 
 ### Fora do escopo
 
-Liste o que não entra nesta sub-issue.
+<!-- Liste explicitamente o que nao entra nesta sub-issue. -->
 
-**Exemplo:**
+-
 
-* Criar endpoint de backend.
-* Criar pipeline de dados.
-* Criar tabela nova no banco.
-* Implementar segmentação de audiência.
-* Implementar exportação de contatos.
-* Implementar edição ou gestão de contatos.
-* Criar dashboards customizados por patrocinador.
-* Definir regras finais de qualidade dos dados.
 
----
+## Criterios de aceite
 
-## 5. Critérios de aceite
+<!-- Condicoes verificaveis para considerar a sub-issue pronta. -->
 
-Liste os critérios que precisam ser atendidos para considerar a sub-issue pronta.
+- [ ]
 
-**Exemplo:**
 
-* [ ] A nova tela está acessível dentro do módulo Analytics.
-* [ ] A tela possui título e descrição contextualizando dados 1st party.
-* [ ] A tela exibe cards para os principais indicadores.
-* [ ] A tela possui área para evolução da base ao longo do tempo.
-* [ ] A tela possui seção de origem dos dados.
-* [ ] A tela possui seção de atributos disponíveis.
-* [ ] A tela possui seção de consentimento ou estado vazio quando esse dado não existir.
-* [ ] A interface segue o padrão visual atual do Analytics.
-* [ ] A tela possui estados mínimos de loading, vazio e erro, quando aplicável.
-* [ ] A tela está preparada para integração com endpoint real ou dados mockados definidos.
+## Validacao tecnica
 
----
+<!-- Como validar a entrega: passos manuais, estados relevantes e comandos obrigatorios. -->
 
-## 6. Áreas impactadas
+-
 
-Liste arquivos, módulos, telas, rotas, componentes ou partes do sistema que podem ser impactadas.
 
-**Exemplo:**
+## Definition of Done
 
-* Módulo Analytics no `retize-monorepo`.
-* Menu/navegação lateral do Analytics.
-* Rotas internas do Analytics.
-* Componentes de cards de indicadores.
-* Componentes de gráfico/visualização temporal.
-* Componentes de estado vazio/loading/erro.
-* Eventuais serviços/hooks de consumo de dados do Analytics.
+<!-- Marque antes de fechar a sub-issue. Remova itens que nao se aplicam. -->
 
----
+- [ ] Codigo implementado no repositorio correto.
+- [ ] Criterios de aceite atendidos.
+- [ ] Validacao tecnica realizada.
+- [ ] Lint/build/testes obrigatorios executados, quando aplicavel.
+- [ ] PR aberta vinculando esta sub-issue.
+- [ ] PR vinculada ao epico principal no retize-docs.
 
-## 7. Validação técnica
 
-Explique como a entrega deve ser testada ou validada tecnicamente.
+<!--
+## Contexto tecnico (opcional)
 
-**Exemplo:**
+Use para detalhes de arquitetura, arquivos, rotas, componentes, endpoints, payloads, tabelas, dependencias ou restricoes relevantes.
+-->
 
-* Rodar o projeto localmente.
-* Acessar o módulo Analytics.
-* Validar se a nova tela aparece na navegação esperada.
-* Validar se a tela renderiza corretamente com dados mockados ou endpoint disponível.
-* Validar comportamento em loading, vazio e erro.
-* Validar responsividade básica.
-* Rodar lint/build/testes obrigatórios do repositório.
-* Confirmar que nenhuma tela existente do Analytics foi quebrada.
+<!--
+## Areas impactadas (opcional)
 
----
-
-## 8. Definition of Done
-
-Marque os critérios finais antes de fechar a sub-issue.
-
-**Exemplo:**
-
-* [ ] Código implementado no repo correto.
-* [ ] Critérios de aceite atendidos.
-* [ ] Validação técnica realizada.
-* [ ] Lint/build/testes obrigatórios executados.
-* [ ] PR aberta vinculando esta sub-issue.
-* [ ] PR vinculada ao épico principal no `retize-docs`.
-* [ ] Evidências adicionadas na PR, quando aplicável.
-* [ ] Sub-issue atualizada com status final.
-* [ ] Épico principal atualizado ou sinalizado para atualização.
+Use para listar modulos, telas, rotas, componentes, servicos, jobs, pipelines ou repositorios possivelmente impactados.
+-->
