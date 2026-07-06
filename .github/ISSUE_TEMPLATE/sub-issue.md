@@ -1,6 +1,6 @@
 ---
 name: Sub-issue
-about: Criar uma issue de execucao vinculada a um epico ou issue principal
+about: Criar uma issue de execução vinculada a um épico ou issue principal
 title: "[Sub-issue] "
 ---
 
@@ -10,8 +10,8 @@ title: "[Sub-issue] "
 
 
 <!--
-Escreva a sub-issue como uma unidade pequena de execucao.
-Comece pelo resumo: ele e a primeira informacao lida por webhooks, notificacoes e LLMs.
+Escreva a sub-issue como uma unidade pequena de execução.
+Comece pelo resumo: ele é a primeira informação lida por webhooks, notificações e LLMs.
 
 LLM/context:
 type: sub-issue
@@ -27,14 +27,14 @@ impacted_areas:
 definition_of_done:
 -->
 
-## Epico relacionado
+## Épico relacionado
 
-<!-- Link da issue principal/epico no retize-docs. -->
+<!-- Link da issue principal/épico no retize-docs. -->
 
 
 ## Objetivo
 
-<!-- Resultado especifico esperado ao concluir esta sub-issue. -->
+<!-- Resultado específico esperado ao concluir esta sub-issue. -->
 
 
 ## Escopo
@@ -47,21 +47,21 @@ definition_of_done:
 
 ### Fora do escopo
 
-<!-- Liste explicitamente o que nao entra nesta sub-issue. -->
+<!-- Liste explicitamente o que não entra nesta sub-issue. -->
 
 -
 
 
-## Criterios de aceite
+## Critérios de aceite
 
-<!-- Condicoes verificaveis para considerar a sub-issue pronta. -->
+<!-- Condições verificáveis para considerar a sub-issue pronta. -->
 
 - [ ]
 
 
-## Validacao tecnica
+## Validação técnica
 
-<!-- Como validar a entrega: passos manuais, estados relevantes e comandos obrigatorios. -->
+<!-- Como validar a entrega: passos manuais, estados relevantes e comandos obrigatórios. -->
 
 -
 
@@ -70,22 +70,22 @@ definition_of_done:
 
 <!-- Marque antes de fechar a sub-issue. Remova itens que nao se aplicam. -->
 
-- [ ] Codigo implementado no repositorio correto.
-- [ ] Criterios de aceite atendidos.
-- [ ] Validacao tecnica realizada.
-- [ ] Lint/build/testes obrigatorios executados, quando aplicavel.
+- [ ] Código implementado no repositório correto.
+- [ ] Critérios de aceite atendidos.
+- [ ] Validação técnica realizada.
+- [ ] Lint/build/testes obrigatórios executados, quando aplicável.
 - [ ] PR aberta vinculando esta sub-issue.
-- [ ] PR vinculada ao epico principal no retize-docs.
+- [ ] PR vinculada ao épico principal no retize-docs.
 
 
 <!--
-## Contexto tecnico (opcional)
+## Contexto técnico (opcional)
 
-Use para detalhes de arquitetura, arquivos, rotas, componentes, endpoints, payloads, tabelas, dependencias ou restricoes relevantes.
+Use para detalhes de arquitetura, arquivos, rotas, componentes, endpoints, payloads, tabelas, dependências ou restrições relevantes.
 -->
 
 <!--
-## Areas impactadas (opcional)
+## Áreas impactadas (opcional)
 
-Use para listar modulos, telas, rotas, componentes, servicos, jobs, pipelines ou repositorios possivelmente impactados.
+Use para listar módulos, telas, rotas, componentes, serviços, jobs, pipelines ou repositórios possivelmente impactados.
 -->
