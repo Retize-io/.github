@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Reportar um bug com contexto, impacto, evidencia e validacao
+about: Reportar um bug com contexto, impacto, evidência e validação
 title: "[Bug] "
 ---
 
@@ -10,8 +10,8 @@ title: "[Bug] "
 
 
 <!--
-Escreva a issue como um relato util para humanos e automacoes.
-Comece pelo resumo: ele e a primeira informacao lida por webhooks, notificacoes e LLMs.
+Escreva a issue como um relato útil para humanos e automações.
+Comece pelo resumo: ele é a primeira informação lida por webhooks, notificações e LLMs.
 
 LLM/context:
 type: bug-report
@@ -28,14 +28,14 @@ suspected_area:
 technical_context:
 -->
 
-## Produto/modulo impactado
+## Produto/módulo impactado
 
-<!-- Produto, modulo, fluxo, repositorio provavel, conta/cliente ou usuario impactado, se aplicavel. -->
+<!-- Produto, módulo, fluxo, repositório provável, conta/cliente ou usuário impactado, se aplicável. -->
 
 
 ## Comportamento atual
 
-<!-- O que acontece hoje. Inclua mensagens de erro, sintomas visiveis ou inconsistencias observadas. -->
+<!-- O que acontece hoje. Inclua mensagens de erro, sintomas visíveis ou inconsistências observadas. -->
 
 
 ## Comportamento esperado
@@ -45,7 +45,7 @@ technical_context:
 
 ## Passos para reproduzir
 
-<!-- Liste passos objetivos. Se nao for reproduzivel, explique as condicoes conhecidas. -->
+<!-- Liste passos objetivos. Se não for reproduzível, explique as condições conhecidas. -->
 
 1.
 2.
@@ -55,34 +55,34 @@ technical_context:
 ## Impacto e severidade
 
 <!--
-Informe o impacto para usuario, operacao, cliente ou negocio.
+Informe o impacto para usuário, operação, cliente ou negócio.
 
 Severidade sugerida:
-- S1 - Critico: producao parada, cliente bloqueado, perda de dado, seguranca ou faturamento.
+- S1 - Crítico: produção parada, cliente bloqueado, perda de dado, segurança ou faturamento.
 - S2 - Alto: fluxo importante quebrado, com alternativa operacional limitada.
-- S3 - Medio: problema relevante, mas nao bloqueia o fluxo principal.
-- S4 - Baixo: bug visual, inconsistencia pequena ou baixo impacto.
+- S3 - Médio: problema relevante, mas não bloqueia o fluxo principal.
+- S4 - Baixo: bug visual, inconsistência pequena ou baixo impacto.
 -->
 
 
-## Evidencias
+## Evidências
 
-<!-- Prints, videos, IDs, payloads, logs, horario aproximado ou links relevantes. -->
+<!-- Prints, vídeos, IDs, payloads, logs, horário aproximado ou links relevantes. -->
 
 
-## Validacao da correcao
+## Validação da correção
 
-<!-- Como confirmar que o bug foi corrigido. Inclua validacoes manuais e comandos obrigatorios, se existirem. -->
+<!-- Como confirmar que o bug foi corrigido. Inclua validações manuais e comandos obrigatórios, se existirem. -->
 
 
 <!--
-## Hipotese inicial / area suspeita (opcional)
+## Hipótese inicial / área suspeita (opcional)
 
-Use se houver uma suspeita util para investigacao. Nao precisa ser a causa final.
+Use se houver uma suspeita útil para investigação. Não precisa ser a causa final.
 -->
 
 <!--
-## Contexto tecnico adicional (opcional)
+## Contexto técnico adicional (opcional)
 
-Use para payloads, queries, rotas, servicos, tabelas, feature flags, dependencias ou observacoes tecnicas relevantes.
+Use para payloads, queries, rotas, serviços, tabelas, feature flags, dependências ou observações técnicas relevantes.
 -->
