@@ -4,6 +4,11 @@ about: Criar uma issue de execucao vinculada a um epico ou issue principal
 title: "[Sub-issue] "
 ---
 
+## Resumo da entrega
+
+<!-- Descreva em 1-3 frases o que esta sub-issue entrega e por que ela existe. -->
+
+
 <!--
 Escreva a sub-issue como uma unidade pequena de execucao.
 Comece pelo resumo: ele e a primeira informacao lida por webhooks, notificacoes e LLMs.
@@ -21,11 +26,6 @@ technical_context:
 impacted_areas:
 definition_of_done:
 -->
-
-## Resumo da entrega
-
-<!-- Descreva em 1-3 frases o que esta sub-issue entrega e por que ela existe. -->
-
 
 ## Epico relacionado
 
