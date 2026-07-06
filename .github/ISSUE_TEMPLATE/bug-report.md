@@ -4,6 +4,11 @@ about: Reportar um bug com contexto, impacto, evidencia e validacao
 title: "[Bug] "
 ---
 
+## Resumo
+
+<!-- Descreva em 1-3 frases o bug, onde acontece e por que importa. -->
+
+
 <!--
 Escreva a issue como um relato util para humanos e automacoes.
 Comece pelo resumo: ele e a primeira informacao lida por webhooks, notificacoes e LLMs.
@@ -22,11 +27,6 @@ validation:
 suspected_area:
 technical_context:
 -->
-
-## Resumo
-
-<!-- Descreva em 1-3 frases o bug, onde acontece e por que importa. -->
-
 
 ## Produto/modulo impactado
 
