@@ -1,3 +1,8 @@
+## Resumo da entrega
+
+<!-- Descreva em 1-3 frases o que esta PR entrega e por que a mudanca existe. -->
+
+
 <!--
 Escreva a PR como um resumo revisavel da entrega.
 Comece pelo resumo: ele e a primeira informacao lida por webhooks, notificacoes e LLMs.
@@ -15,10 +20,6 @@ risks:
 commands:
 review_checklist:
 -->
-
-## Resumo da entrega
-
-<!-- Descreva em 1-3 frases o que esta PR entrega e por que a mudanca existe. -->
 
 
 ## Issue relacionada
