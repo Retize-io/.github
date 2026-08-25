@@ -103,10 +103,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          case "$VALUES_FILE" in
-            apps/products/*.yaml|apps/products/*.yml) ;;
+          if [[ ! "$VALUES_FILE" =~ ^apps/products/[a-z0-9][a-z0-9_-]*/values-[a-z0-9][a-z0-9_-]*\.ya?ml$ ]]; then
+            echo "values-file must match apps/products/<product>/values-<environment>.yaml" >&2
+            exit 1
+          fi
+
+          products_root="$(realpath -e -- apps/products)"
+          canonical_values_file="$(realpath -e -- "$VALUES_FILE")"
+          case "$canonical_values_file" in
+            "$products_root"/*) ;;
             *)
-              echo "values-file must be directly under apps/products/" >&2
+              echo "values-file must resolve beneath apps/products/" >&2
               exit 1
               ;;
           esac
@@ -262,19 +269,25 @@ jobs:
             response="$(curl --fail --silent --show-error \
               --header "Authorization: Bearer ${ARGOCD_AUTH_TOKEN}" \
               "$application_url")"
-            revision="$(jq -r '.status.sync.revision // empty' <<< "$response")"
             sync_status="$(jq -r '.status.sync.status // empty' <<< "$response")"
             health_status="$(jq -r '.status.health.status // empty' <<< "$response")"
-            echo "attempt=${attempt} revision=${revision} sync=${sync_status} health=${health_status}"
+            mapfile -t revisions < <(jq -r '
+              [(.status.sync.revision? // empty)] + (.status.sync.revisions? // [])
+              | map(select(type == "string" and length > 0))
+              | unique[]
+            ' <<< "$response")
+            echo "attempt=${attempt} revisions=${revisions[*]:-none} sync=${sync_status} health=${health_status}"
 
-            if [[ "$health_status" == "Healthy" && "$sync_status" == "Synced" && -n "$revision" ]]; then
-              if [[ "$revision" == "$deploy_commit" ]]; then
-                exit 0
-              fi
+            if [[ "$health_status" == "Healthy" && "$sync_status" == "Synced" && "${#revisions[@]}" -gt 0 ]]; then
               git fetch origin "$TARGET_BRANCH" --quiet 2>/dev/null || true
-              if git cat-file -e "${revision}^{commit}" 2>/dev/null && git merge-base --is-ancestor "$deploy_commit" "$revision"; then
-                exit 0
-              fi
+              for revision in "${revisions[@]}"; do
+                if [[ "$revision" == "$deploy_commit" ]]; then
+                  exit 0
+                fi
+                if git cat-file -e "${revision}^{commit}" 2>/dev/null && git merge-base --is-ancestor "$deploy_commit" "$revision"; then
+                  exit 0
+                fi
+              done
             fi
             sleep 5
           done
