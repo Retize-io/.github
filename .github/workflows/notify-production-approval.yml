@@ -1,0 +1,73 @@
+name: Notify Production Approval
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: Target deployment environment, e.g. production.
+        type: string
+        required: true
+      product:
+        description: Product or application name.
+        type: string
+        required: true
+      component:
+        description: Component within a product, e.g. api or worker. Optional for single-component products.
+        type: string
+        required: false
+      image-reference:
+        description: Image reference to deploy, e.g. ghcr.io/retize-io/my-api:sha-abc1234.
+        type: string
+        required: true
+      extra-message:
+        description: Optional additional lines appended to the notification.
+        type: string
+        required: false
+        default: ""
+    secrets:
+      discord-webhook-url:
+        description: Discord webhook URL for deployment notifications.
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compose notification message
+        id: message
+        shell: bash
+        run: |
+          body="**Approval required** for deployment to \`${{ inputs.environment }}\`"
+          body+=$'\n\n'
+          body+="**Product:** ${{ inputs.product }}"
+          if [ -n "${{ inputs.component }}" ]; then
+            body+=" · **Component:** ${{ inputs.component }}"
+          fi
+          body+=$'\n'
+          body+="**Repository:** ${{ github.repository }}"
+          body+=$'\n'
+          body+="**Commit:** \`${{ github.sha }}\`"
+          body+=$'\n'
+          body+="**Image:** \`${{ inputs['image-reference'] }}\`"
+          body+=$'\n'
+          body+="**Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          if [ -n "${{ inputs['extra-message'] }}" ]; then
+            body+=$'\n\n'
+            body+="${{ inputs['extra-message'] }}"
+          fi
+          body+=$'\n\n'
+          body+="Review and approve this deployment in the **${{ inputs.environment }}** GitHub Environment."
+          {
+            echo "content<<MESSAGE"
+            printf '%s\n' "$body"
+            echo "MESSAGE"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Send Discord notification
+        uses: appleboy/discord-action@afc227330777ad298156a1f5233dfa1e885616db # v1.2.0
+        with:
+          webhook_url: ${{ secrets.discord-webhook-url }}
+          message: ${{ steps.message.outputs.content }}

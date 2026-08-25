@@ -1,0 +1,94 @@
+name: Build Image
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: Full image name, e.g. ghcr.io/retize-io/my-api. Defaults to the calling repository.
+        type: string
+        required: false
+      context:
+        description: Docker build context.
+        type: string
+        required: false
+        default: .
+      dockerfile:
+        description: Path to the Dockerfile.
+        type: string
+        required: false
+        default: Dockerfile
+      version:
+        description: Optional version tag to apply, e.g. 1.2.3. Not applied by default.
+        type: string
+        required: false
+    outputs:
+      image-repository:
+        description: Registry and repository the image was pushed to.
+        value: ${{ jobs.build-and-push.outputs.image-repository }}
+      image-path:
+        description: Immutable image reference with short-SHA tag.
+        value: ${{ jobs.build-and-push.outputs.image-path }}
+      tags:
+        description: Space-separated list of tags applied to the image.
+        value: ${{ jobs.build-and-push.outputs.tags }}
+      digest:
+        description: Image digest.
+        value: ${{ jobs.build-and-push.outputs.digest }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image-repository: ${{ steps.meta.outputs.name }}
+      image-path: ${{ steps.image.outputs.path }}
+      tags: ${{ steps.meta.outputs.tags }}
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ inputs.image-name || format('ghcr.io/{0}', github.repository) }}
+          tags: |
+            type=ref,event=branch
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value={{date 'YYYY-MM-DD'}}
+            type=raw,value=${{ inputs.version }},enable=${{ inputs.version != '' }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Resolve immutable image path
+        id: image
+        shell: bash
+        run: |
+          echo "path=${{ steps.meta.outputs.name }}:sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
