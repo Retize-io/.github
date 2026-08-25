@@ -43,19 +43,6 @@ on:
         description: Optional component name shown in the approval notification.
         type: string
         required: false
-      argocd-server:
-        description: Argo CD base URL.
-        type: string
-        required: true
-      argocd-application:
-        description: Argo CD Application name to verify.
-        type: string
-        required: true
-      argocd-timeout:
-        description: Maximum Argo CD health wait in seconds.
-        type: number
-        required: false
-        default: 900
       github-app-client-id:
         description: GitHub App client ID installed on retize-core.
         type: string
@@ -67,9 +54,6 @@ on:
       github-app-private-key:
         description: GitHub App private key for retize-core.
         required: true
-      argocd-auth-token:
-        description: Argo CD read token.
-        required: true
     outputs:
       image-path:
         description: Immutable image reference produced by the build.
@@ -80,6 +64,9 @@ on:
       retize-core-commit-sha:
         description: retize-core commit after promotion.
         value: ${{ jobs.promote.outputs.commit-sha }}
+      promotion-pr-url:
+        description: retize-core promotion PR URL.
+        value: ${{ jobs.promote.outputs.pull-request-url }}
 
 permissions:
   contents: read
@@ -101,7 +88,8 @@ jobs:
       build-args: ${{ inputs['build-args'] }}
 
   notify:
-    needs: build
+    needs: [build, promote]
+    if: needs.promote.outputs.changed == 'true'
     uses: ./.github/workflows/notify-production-approval.yml
     permissions:
       contents: read
@@ -110,23 +98,21 @@ jobs:
       product: ${{ inputs.product }}
       component: ${{ inputs.component }}
       image-reference: ${{ needs.build.outputs.image-path }}
+      approval-url: ${{ needs.promote.outputs.pull-request-url }}
     secrets:
       discord-webhook-url: ${{ secrets.discord-webhook-url }}
 
   promote:
-    needs: [build, notify]
+    needs: build
     uses: ./.github/workflows/update-retize-core.yml
     permissions:
       contents: read
     with:
       environment: production
+      create-pull-request: true
       values-file: ${{ inputs['values-file'] }}
       images: |
         ${{ inputs['image-value-path'] }}=${{ needs.build.outputs.image-path }}
-      argocd-server: ${{ inputs['argocd-server'] }}
-      argocd-application: ${{ inputs['argocd-application'] }}
-      argocd-timeout: ${{ inputs['argocd-timeout'] }}
       github-app-client-id: ${{ inputs['github-app-client-id'] }}
     secrets:
       github-app-private-key: ${{ secrets.github-app-private-key }}
-      argocd-auth-token: ${{ secrets.argocd-auth-token }}

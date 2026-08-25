@@ -27,14 +27,19 @@ on:
         type: string
         required: false
         default: "chore: update application images"
+      create-pull-request:
+        description: Create a promotion PR instead of committing directly to the target branch.
+        type: boolean
+        required: false
+        default: false
       argocd-server:
-        description: Argo CD server hostname and optional port.
+        description: Argo CD base URL, required for direct-commit deployments.
         type: string
-        required: true
+        required: false
       argocd-application:
         description: Argo CD Application name to wait for after the commit.
         type: string
-        required: true
+        required: false
       argocd-timeout:
         description: Maximum Argo CD health wait in seconds.
         type: number
@@ -50,7 +55,7 @@ on:
         required: true
       argocd-auth-token:
         description: Argo CD authentication token with read access to the application.
-        required: true
+        required: false
     outputs:
       changed:
         description: Whether the workflow created a commit.
@@ -58,6 +63,9 @@ on:
       commit-sha:
         description: Commit SHA after the update.
         value: ${{ jobs.update.outputs.commit-sha }}
+      pull-request-url:
+        description: Promotion PR URL when create-pull-request is enabled.
+        value: ${{ jobs.update.outputs.pull-request-url }}
 
 permissions:
   contents: read
@@ -66,13 +74,13 @@ jobs:
   update:
     name: Update retize-core
     runs-on: ubuntu-24.04
-    environment: ${{ inputs.environment }}
     concurrency:
       group: retize-core-${{ inputs.branch }}
       cancel-in-progress: false
     outputs:
       changed: ${{ steps.commit.outputs.changed }}
       commit-sha: ${{ steps.commit.outputs.commit-sha }}
+      pull-request-url: ${{ steps.commit.outputs.pull-request-url }}
     steps:
       - name: Create GitHub App token
         id: app-token
@@ -83,6 +91,7 @@ jobs:
           owner: Retize-io
           repositories: retize-core
           permission-contents: write
+          permission-pull-requests: write
 
       - name: Checkout retize-core
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -93,6 +102,14 @@ jobs:
           path: retize-core
           persist-credentials: false
           fetch-depth: 0
+
+      - name: Prepare promotion branch
+        if: inputs['create-pull-request']
+        working-directory: retize-core
+        env:
+          PROMOTION_BRANCH: promotion/${{ github.repository }}/${{ github.run_id }}-${{ github.run_attempt }}
+        shell: bash
+        run: git switch -c "$PROMOTION_BRANCH"
 
       - name: Update image values
         working-directory: retize-core
@@ -204,6 +221,10 @@ jobs:
           COMMIT_MESSAGE: ${{ inputs['commit-message'] }}
           VALUES_FILE: ${{ inputs['values-file'] }}
           TARGET_BRANCH: ${{ inputs.branch }}
+          CREATE_PR: ${{ inputs['create-pull-request'] }}
+          PROMOTION_BRANCH: promotion/${{ github.repository }}/${{ github.run_id }}-${{ github.run_attempt }}
+          DEPLOYMENT_ENVIRONMENT: ${{ inputs.environment }}
+          IMAGE_MAPPINGS: ${{ inputs.images }}
           APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
         shell: bash
@@ -219,11 +240,25 @@ jobs:
           if git diff --quiet --; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            echo "pull-request-url=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           git add -- "$VALUES_FILE"
           git commit -m "$COMMIT_MESSAGE"
+          if [ "$CREATE_PR" = true ]; then
+            git push origin "HEAD:${PROMOTION_BRANCH}"
+            pr_url="$(gh pr list --repo Retize-io/retize-core --head "$PROMOTION_BRANCH" --state open --json url --jq '.[0].url // empty')"
+            if [ -z "$pr_url" ]; then
+              pr_body=$(printf '## Deployment promotion\n\nEnvironment: `%s`\nValues file: `%s`\n\n### Image updates\n```text\n%s\n```\n\nThis PR was created by `%s` from [%s]. Merge this PR to promote the image.' "$DEPLOYMENT_ENVIRONMENT" "$VALUES_FILE" "$IMAGE_MAPPINGS" "$GITHUB_REPOSITORY" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+              pr_url="$(gh pr create --repo Retize-io/retize-core --base "$TARGET_BRANCH" --head "$PROMOTION_BRANCH" --title "deploy: promote ${DEPLOYMENT_ENVIRONMENT} images" --body "$pr_body")"
+            fi
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            echo "pull-request-url=$pr_url" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           pushed=false
           for attempt in 1 2 3 4 5; do
             if git push origin "HEAD:${TARGET_BRANCH}"; then
@@ -246,8 +281,10 @@ jobs:
 
           echo "changed=true" >> "$GITHUB_OUTPUT"
           echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "pull-request-url=" >> "$GITHUB_OUTPUT"
 
       - name: Wait for Argo CD health
+        if: inputs['create-pull-request'] == false
         working-directory: retize-core
         env:
           ARGOCD_SERVER: ${{ inputs['argocd-server'] }}

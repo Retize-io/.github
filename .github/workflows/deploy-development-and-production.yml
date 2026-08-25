@@ -1,0 +1,158 @@
+name: Deploy Development and Production
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: Optional full GHCR image name. Defaults to the calling repository.
+        type: string
+        required: false
+      context:
+        description: Docker build context.
+        type: string
+        required: false
+        default: .
+      dockerfile:
+        description: Path to the Dockerfile.
+        type: string
+        required: false
+        default: Dockerfile
+      version:
+        description: Optional version tag to apply.
+        type: string
+        required: false
+      build-args:
+        description: Optional newline-separated Docker build arguments.
+        type: string
+        required: false
+        default: ""
+      development-values-file:
+        description: Development retize-core values file.
+        type: string
+        required: true
+      development-image-value-path:
+        description: Development dot-separated image object path.
+        type: string
+        required: false
+        default: image
+      development-argocd-server:
+        description: Development Argo CD base URL.
+        type: string
+        required: true
+      development-argocd-application:
+        description: Development Argo CD Application name.
+        type: string
+        required: true
+      development-argocd-timeout:
+        description: Maximum development Argo CD health wait in seconds.
+        type: number
+        required: false
+        default: 900
+      production-values-file:
+        description: Production retize-core values file.
+        type: string
+        required: true
+      production-image-value-path:
+        description: Production dot-separated image object path.
+        type: string
+        required: false
+        default: image
+      product:
+        description: Product name shown in the production notification.
+        type: string
+        required: true
+      component:
+        description: Optional component name shown in the production notification.
+        type: string
+        required: false
+      github-app-client-id:
+        description: GitHub App client ID installed on retize-core.
+        type: string
+        required: true
+    secrets:
+      github-app-private-key:
+        description: GitHub App private key for retize-core.
+        required: true
+      development-argocd-auth-token:
+        description: Development Argo CD read token.
+        required: true
+      discord-webhook-url:
+        description: Discord deployment notification webhook.
+        required: true
+    outputs:
+      image-path:
+        description: Immutable image reference built and promoted to both environments.
+        value: ${{ jobs.build.outputs.image-path }}
+      digest:
+        description: Digest of the image promoted to both environments.
+        value: ${{ jobs.build.outputs.digest }}
+      promotion-pr-url:
+        description: Production retize-core promotion PR URL.
+        value: ${{ jobs.production.outputs.pull-request-url }}
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-image.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    with:
+      image-name: ${{ inputs['image-name'] }}
+      context: ${{ inputs.context }}
+      dockerfile: ${{ inputs.dockerfile }}
+      version: ${{ inputs.version }}
+      build-args: ${{ inputs['build-args'] }}
+
+  development:
+    needs: build
+    uses: ./.github/workflows/update-retize-core.yml
+    permissions:
+      contents: read
+    with:
+      environment: development
+      values-file: ${{ inputs['development-values-file'] }}
+      images: |
+        ${{ inputs['development-image-value-path'] }}=${{ needs.build.outputs.image-path }}
+      argocd-server: ${{ inputs['development-argocd-server'] }}
+      argocd-application: ${{ inputs['development-argocd-application'] }}
+      argocd-timeout: ${{ inputs['development-argocd-timeout'] }}
+      github-app-client-id: ${{ inputs['github-app-client-id'] }}
+    secrets:
+      github-app-private-key: ${{ secrets.github-app-private-key }}
+      argocd-auth-token: ${{ secrets.development-argocd-auth-token }}
+
+  production:
+    needs: [build, development]
+    uses: ./.github/workflows/update-retize-core.yml
+    permissions:
+      contents: read
+    with:
+      environment: production
+      create-pull-request: true
+      values-file: ${{ inputs['production-values-file'] }}
+      images: |
+        ${{ inputs['production-image-value-path'] }}=${{ needs.build.outputs.image-path }}
+      github-app-client-id: ${{ inputs['github-app-client-id'] }}
+    secrets:
+      github-app-private-key: ${{ secrets.github-app-private-key }}
+
+  notify:
+    needs: [build, production]
+    if: needs.production.outputs.changed == 'true'
+    uses: ./.github/workflows/notify-production-approval.yml
+    permissions:
+      contents: read
+    with:
+      environment: production
+      product: ${{ inputs.product }}
+      component: ${{ inputs.component }}
+      image-reference: ${{ needs.build.outputs.image-path }}
+      approval-url: ${{ needs.production.outputs.pull-request-url }}
+    secrets:
+      discord-webhook-url: ${{ secrets.discord-webhook-url }}
