@@ -21,6 +21,11 @@ on:
         description: Optional version tag to apply, e.g. 1.2.3. Not applied by default.
         type: string
         required: false
+      build-args:
+        description: Optional newline-separated Docker build arguments.
+        type: string
+        required: false
+        default: ""
     outputs:
       image-repository:
         description: Registry and repository the image was pushed to.
@@ -29,7 +34,7 @@ on:
         description: Immutable image reference with short-SHA tag.
         value: ${{ jobs.build-and-push.outputs.image-path }}
       tags:
-        description: Space-separated list of tags applied to the image.
+        description: Newline-separated list of tags applied to the image.
         value: ${{ jobs.build-and-push.outputs.tags }}
       digest:
         description: Image digest.
@@ -44,7 +49,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     outputs:
-      image-repository: ${{ steps.meta.outputs.name }}
+      image-repository: ${{ steps.image.outputs.repository }}
       image-path: ${{ steps.image.outputs.path }}
       tags: ${{ steps.meta.outputs.tags }}
       digest: ${{ steps.push.outputs.digest }}
@@ -62,25 +67,38 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve immutable image path
+        id: image
+        env:
+          INPUT_IMAGE_NAME: ${{ inputs['image-name'] }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repository="${INPUT_IMAGE_NAME:-ghcr.io/${GITHUB_REPOSITORY}}"
+          repository="${repository,,}"
+          if [[ "$repository" == *[[:space:]]* || "$repository" != */* ]]; then
+            echo "image-name must be a registry/repository reference" >&2
+            exit 1
+          fi
+          {
+            echo "repository=$repository"
+            echo "path=$repository:sha-${GITHUB_SHA::7}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: ${{ inputs.image-name || format('ghcr.io/{0}', github.repository) }}
+          images: ${{ steps.image.outputs.repository }}
           tags: |
             type=ref,event=branch
+            type=ref,event=tag
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value={{date 'YYYY-MM-DD'}}
             type=raw,value=${{ inputs.version }},enable=${{ inputs.version != '' }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-
-      - name: Resolve immutable image path
-        id: image
-        shell: bash
-        run: |
-          echo "path=${{ steps.meta.outputs.name }}:sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         id: push
@@ -91,6 +109,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ inputs['build-args'] }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

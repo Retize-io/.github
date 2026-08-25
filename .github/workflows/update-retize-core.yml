@@ -27,6 +27,19 @@ on:
         type: string
         required: false
         default: "chore: update application images"
+      argocd-server:
+        description: Argo CD server hostname and optional port.
+        type: string
+        required: true
+      argocd-application:
+        description: Argo CD Application name to wait for after the commit.
+        type: string
+        required: true
+      argocd-timeout:
+        description: Maximum Argo CD health wait in seconds.
+        type: number
+        required: false
+        default: 900
       github-app-client-id:
         description: GitHub App client ID installed on retize-core.
         type: string
@@ -34,6 +47,9 @@ on:
     secrets:
       github-app-private-key:
         description: PEM private key for the GitHub App installed on retize-core.
+        required: true
+      argocd-auth-token:
+        description: Argo CD authentication token with read access to the application.
         required: true
     outputs:
       changed:
@@ -51,6 +67,9 @@ jobs:
     name: Update retize-core
     runs-on: ubuntu-24.04
     environment: ${{ inputs.environment }}
+    concurrency:
+      group: retize-core-${{ inputs.branch }}
+      cancel-in-progress: false
     outputs:
       changed: ${{ steps.commit.outputs.changed }}
       commit-sha: ${{ steps.commit.outputs.commit-sha }}
@@ -73,6 +92,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           path: retize-core
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Update image values
         working-directory: retize-core
@@ -157,6 +177,7 @@ jobs:
               --workdir /work \
               --env REPOSITORY \
               --env TAG \
+              --entrypoint yq \
               mikefarah/yq:4-githubaction@sha256:e1b8c865f299ea6b02910a7ddf147d5d431244d4cc116f89c2148c9f53822906 \
               eval -i "${yq_path}.repository = strenv(REPOSITORY) | ${yq_path}.tag = strenv(TAG)" "$VALUES_FILE"
           done <<< "$IMAGE_MAPPINGS"
@@ -184,6 +205,9 @@ jobs:
 
           git config user.name "${APP_SLUG}[bot]"
           git config user.email "${APP_SLUG}[bot]@users.noreply.github.com"
+          export GH_TOKEN="$APP_TOKEN"
+          gh auth setup-git
+          git remote set-url origin "https://github.com/Retize-io/retize-core.git"
 
           if git diff --quiet --; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -193,7 +217,67 @@ jobs:
 
           git add -- "$VALUES_FILE"
           git commit -m "$COMMIT_MESSAGE"
-          git push "https://x-access-token:${APP_TOKEN}@github.com/Retize-io/retize-core.git" "HEAD:${TARGET_BRANCH}"
+          pushed=false
+          for attempt in 1 2 3 4 5; do
+            if git push origin "HEAD:${TARGET_BRANCH}"; then
+              pushed=true
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "Unable to push after ${attempt} attempts" >&2
+              exit 1
+            fi
+            git fetch origin "$TARGET_BRANCH"
+            if ! git rebase "origin/${TARGET_BRANCH}"; then
+              git rebase --abort || true
+              echo "Could not rebase the image update onto the latest retize-core/${TARGET_BRANCH}; resolve the conflicting deployment changes and retry." >&2
+              exit 1
+            fi
+            sleep "$attempt"
+          done
+          [ "$pushed" = true ]
 
           echo "changed=true" >> "$GITHUB_OUTPUT"
           echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for Argo CD health
+        working-directory: retize-core
+        env:
+          ARGOCD_SERVER: ${{ inputs['argocd-server'] }}
+          ARGOCD_APPLICATION: ${{ inputs['argocd-application'] }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.argocd-auth-token }}
+          ARGOCD_TIMEOUT: ${{ inputs['argocd-timeout'] }}
+          TARGET_BRANCH: ${{ inputs.branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          application_url="${ARGOCD_SERVER%/}/api/v1/applications/${ARGOCD_APPLICATION}"
+          deploy_commit="$(git rev-parse HEAD)"
+          attempts=$((ARGOCD_TIMEOUT / 5))
+          if [ "$attempts" -lt 1 ]; then
+            echo "argocd-timeout must be at least 5 seconds" >&2
+            exit 1
+          fi
+          for attempt in $(seq 1 "$attempts"); do
+            response="$(curl --fail --silent --show-error \
+              --header "Authorization: Bearer ${ARGOCD_AUTH_TOKEN}" \
+              "$application_url")"
+            revision="$(jq -r '.status.sync.revision // empty' <<< "$response")"
+            sync_status="$(jq -r '.status.sync.status // empty' <<< "$response")"
+            health_status="$(jq -r '.status.health.status // empty' <<< "$response")"
+            echo "attempt=${attempt} revision=${revision} sync=${sync_status} health=${health_status}"
+
+            if [[ "$health_status" == "Healthy" && "$sync_status" == "Synced" && -n "$revision" ]]; then
+              if [[ "$revision" == "$deploy_commit" ]]; then
+                exit 0
+              fi
+              git fetch origin "$TARGET_BRANCH" --quiet 2>/dev/null || true
+              if git cat-file -e "${revision}^{commit}" 2>/dev/null && git merge-base --is-ancestor "$deploy_commit" "$revision"; then
+                exit 0
+              fi
+            fi
+            sleep 5
+          done
+
+          echo "Argo CD did not report a synced, healthy revision containing ${deploy_commit}." >&2
+          exit 1

@@ -12,18 +12,13 @@ on:
         type: string
         required: true
       component:
-        description: Component within a product, e.g. api or worker. Optional for single-component products.
+        description: Component within a product, e.g. api or worker.
         type: string
         required: false
       image-reference:
         description: Image reference to deploy, e.g. ghcr.io/retize-io/my-api:sha-abc1234.
         type: string
         required: true
-      extra-message:
-        description: Optional additional lines appended to the notification.
-        type: string
-        required: false
-        default: ""
     secrets:
       discord-webhook-url:
         description: Discord webhook URL for deployment notifications.
@@ -36,38 +31,47 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Compose notification message
-        id: message
+      - name: Send Discord approval embed
+        env:
+          DEPLOYMENT_ENVIRONMENT: ${{ inputs.environment }}
+          PRODUCT: ${{ inputs.product }}
+          COMPONENT: ${{ inputs.component }}
+          IMAGE_REFERENCE: ${{ inputs['image-reference'] }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.discord-webhook-url }}
         shell: bash
         run: |
-          body="**Approval required** for deployment to \`${{ inputs.environment }}\`"
-          body+=$'\n\n'
-          body+="**Product:** ${{ inputs.product }}"
-          if [ -n "${{ inputs.component }}" ]; then
-            body+=" · **Component:** ${{ inputs.component }}"
+          set -euo pipefail
+          component_label="${COMPONENT:-all components}"
+          commit_url="https://github.com/${REPOSITORY}/commit/${SOURCE_COMMIT}"
+          payload="$(jq -n \
+            --arg title "Production deployment approval required" \
+            --arg url "$WORKFLOW_URL" \
+            --arg product "$PRODUCT" \
+            --arg component "$component_label" \
+            --arg environment "$DEPLOYMENT_ENVIRONMENT" \
+            --arg image "$IMAGE_REFERENCE" \
+            --arg commit "$SOURCE_COMMIT" \
+            --arg commit_url "$commit_url" \
+            --arg actor "$ACTOR" \
+            --arg repository "$REPOSITORY" \
+            '{embeds: [{title: $title, url: $url, color: 16753920, fields: [
+              {name: "Product", value: $product, inline: true},
+              {name: "Component", value: $component, inline: true},
+              {name: "Environment", value: $environment, inline: true},
+              {name: "Image", value: ("`" + $image + "`"), inline: false},
+              {name: "Source commit", value: ("[" + ($commit[0:7]) + "](" + $commit_url + ")"), inline: true},
+              {name: "Repository", value: $repository, inline: true},
+              {name: "Requested by", value: $actor, inline: true}
+            ], description: "[Review and approve this deployment](" + $url + ") in the protected GitHub Environment."}]}')"
+          if [ "${#payload}" -gt 5900 ]; then
+            echo "Generated Discord embed exceeds the Discord payload limit" >&2
+            exit 1
           fi
-          body+=$'\n'
-          body+="**Repository:** ${{ github.repository }}"
-          body+=$'\n'
-          body+="**Commit:** \`${{ github.sha }}\`"
-          body+=$'\n'
-          body+="**Image:** \`${{ inputs['image-reference'] }}\`"
-          body+=$'\n'
-          body+="**Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          if [ -n "${{ inputs['extra-message'] }}" ]; then
-            body+=$'\n\n'
-            body+="${{ inputs['extra-message'] }}"
-          fi
-          body+=$'\n\n'
-          body+="Review and approve this deployment in the **${{ inputs.environment }}** GitHub Environment."
-          {
-            echo "content<<MESSAGE"
-            printf '%s\n' "$body"
-            echo "MESSAGE"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Send Discord notification
-        uses: appleboy/discord-action@afc227330777ad298156a1f5233dfa1e885616db # v1.2.0
-        with:
-          webhook_url: ${{ secrets.discord-webhook-url }}
-          message: ${{ steps.message.outputs.content }}
+          curl --fail --silent --show-error \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            "$DISCORD_WEBHOOK_URL"
