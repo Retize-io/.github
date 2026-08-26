@@ -147,6 +147,9 @@ jobs:
 
           declare -A seen_paths=()
           while IFS='=' read -r value_path image_reference remainder; do
+            if [ -z "$value_path$image_reference$remainder" ]; then
+              continue
+            fi
             if [ -n "$remainder" ] || [ -z "$value_path" ] || [ -z "$image_reference" ]; then
               echo "Each images entry must be value.path=registry/image:tag" >&2
               exit 1
