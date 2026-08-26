@@ -1,4 +1,4 @@
-name: Notify Production Promotion
+name: Notify Prod
 
 on:
   workflow_call:
@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   notify:
-    name: Send production approval notification
+    name: Send
     runs-on: ubuntu-latest
     steps:
       - name: Send Discord approval embed

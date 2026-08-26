@@ -1,4 +1,4 @@
-name: Promote to Production
+name: Promote Prod
 
 on:
   workflow_call:
@@ -75,7 +75,7 @@ permissions:
 
 jobs:
   build:
-    name: Build and publish signed image
+    name: Build
     uses: Retize-io/.github/.github/workflows/build-image.yml@v1
     permissions:
       contents: read
@@ -89,7 +89,7 @@ jobs:
       build-args: ${{ inputs['build-args'] }}
 
   notify:
-    name: Notify production approval
+    name: Notify
     needs: [build, promote]
     if: needs.promote.outputs.changed == 'true'
     uses: Retize-io/.github/.github/workflows/notify-production-approval.yml@v1
@@ -105,7 +105,7 @@ jobs:
       discord-webhook-url: ${{ secrets.discord-webhook-url }}
 
   promote:
-    name: Create production promotion PR
+    name: Prod PR
     needs: build
     uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1
     permissions:

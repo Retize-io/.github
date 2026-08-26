@@ -1,4 +1,4 @@
-name: Deploy to Development and Promote to Production
+name: Deploy Dev + Prod
 
 on:
   workflow_call:
@@ -81,7 +81,7 @@ permissions:
 
 jobs:
   build:
-    name: Build and publish signed image
+    name: Build
     uses: Retize-io/.github/.github/workflows/build-image.yml@v1
     permissions:
       contents: read
@@ -95,7 +95,7 @@ jobs:
       build-args: ${{ inputs['build-args'] }}
 
   development:
-    name: Update development image
+    name: Dev
     needs: build
     uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1
     permissions:
@@ -110,7 +110,7 @@ jobs:
       github-app-private-key: ${{ secrets.github-app-private-key }}
 
   production:
-    name: Create production promotion PR
+    name: Prod PR
     needs: [build, development]
     uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1
     permissions:
@@ -126,7 +126,7 @@ jobs:
       github-app-private-key: ${{ secrets.github-app-private-key }}
 
   notify:
-    name: Notify production approval
+    name: Notify
     needs: [build, production]
     if: needs.production.outputs.changed == 'true'
     uses: Retize-io/.github/.github/workflows/notify-production-approval.yml@v1

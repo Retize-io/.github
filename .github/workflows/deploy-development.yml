@@ -1,4 +1,4 @@
-name: Deploy to Development
+name: Deploy Dev
 
 on:
   workflow_call:
@@ -61,7 +61,7 @@ permissions:
 
 jobs:
   build:
-    name: Build and publish signed image
+    name: Build
     uses: Retize-io/.github/.github/workflows/build-image.yml@v1
     permissions:
       contents: read
@@ -75,7 +75,7 @@ jobs:
       build-args: ${{ inputs['build-args'] }}
 
   promote:
-    name: Update development image
+    name: Update Dev
     needs: build
     uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1
     permissions:

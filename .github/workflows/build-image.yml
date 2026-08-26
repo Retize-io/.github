@@ -1,4 +1,4 @@
-name: Build and Publish Signed Image
+name: Build Image
 
 on:
   workflow_call:
@@ -47,7 +47,7 @@ permissions:
 
 jobs:
   build-and-push:
-    name: Build, publish, and sign image
+    name: Build
     runs-on: ubuntu-latest
     outputs:
       image-repository: ${{ steps.image.outputs.repository }}
