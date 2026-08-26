@@ -152,7 +152,7 @@ jobs:
               exit 1
             fi
 
-            if [[ "$value_path" == .* || "$value_path" == *. || "$value_path" == *..* || "$value_path" == */* || "$value_path" == *[^a-zA-Z0-9_.-]* ]]; then
+            if [[ "$value_path" == .* || "$value_path" == *. || "$value_path" == *..* || "$value_path" == */* || "$value_path" == *[^a-zA-Z0-9_.]* ]]; then
               echo "Invalid image value path: $value_path" >&2
               exit 1
             fi
@@ -175,11 +175,7 @@ jobs:
               exit 1
             fi
 
-            yq_path="."
-            IFS='.' read -ra path_parts <<< "$value_path"
-            for path_part in "${path_parts[@]}"; do
-              yq_path+=".\"$path_part\""
-            done
+            yq_path=".${value_path}"
 
             export REPOSITORY="$image_repository"
             export TAG="$image_tag"
