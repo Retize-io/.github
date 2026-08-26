@@ -1,4 +1,4 @@
-name: Deploy Development and Production
+name: Deploy to Development and Promote to Production
 
 on:
   workflow_call:
@@ -35,19 +35,6 @@ on:
         type: string
         required: false
         default: image
-      development-argocd-server:
-        description: Development Argo CD base URL.
-        type: string
-        required: true
-      development-argocd-application:
-        description: Development Argo CD Application name.
-        type: string
-        required: true
-      development-argocd-timeout:
-        description: Maximum development Argo CD health wait in seconds.
-        type: number
-        required: false
-        default: 900
       production-values-file:
         description: Production retize-core values file.
         type: string
@@ -73,9 +60,6 @@ on:
       github-app-private-key:
         description: GitHub App private key for retize-core.
         required: true
-      development-argocd-auth-token:
-        description: Development Argo CD read token.
-        required: true
       discord-webhook-url:
         description: Discord deployment notification webhook.
         required: true
@@ -97,6 +81,7 @@ permissions:
 
 jobs:
   build:
+    name: Build and publish signed image
     uses: Retize-io/.github/.github/workflows/build-image.yml@v1
     permissions:
       contents: read
@@ -110,6 +95,7 @@ jobs:
       build-args: ${{ inputs['build-args'] }}
 
   development:
+    name: Update development image
     needs: build
     uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1
     permissions:
@@ -119,15 +105,12 @@ jobs:
       values-file: ${{ inputs['development-values-file'] }}
       images: |
         ${{ inputs['development-image-value-path'] }}=${{ needs.build.outputs.image-path }}
-      argocd-server: ${{ inputs['development-argocd-server'] }}
-      argocd-application: ${{ inputs['development-argocd-application'] }}
-      argocd-timeout: ${{ inputs['development-argocd-timeout'] }}
       github-app-client-id: ${{ inputs['github-app-client-id'] }}
     secrets:
       github-app-private-key: ${{ secrets.github-app-private-key }}
-      argocd-auth-token: ${{ secrets.development-argocd-auth-token }}
 
   production:
+    name: Create production promotion PR
     needs: [build, development]
     uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1
     permissions:
@@ -143,6 +126,7 @@ jobs:
       github-app-private-key: ${{ secrets.github-app-private-key }}
 
   notify:
+    name: Notify production approval
     needs: [build, production]
     if: needs.production.outputs.changed == 'true'
     uses: Retize-io/.github/.github/workflows/notify-production-approval.yml@v1

@@ -1,4 +1,4 @@
-name: Update retize-core Image
+name: Promote Image to retize-core
 
 on:
   workflow_call:
@@ -32,19 +32,6 @@ on:
         type: boolean
         required: false
         default: false
-      argocd-server:
-        description: Argo CD base URL, required for direct-commit deployments.
-        type: string
-        required: false
-      argocd-application:
-        description: Argo CD Application name to wait for after the commit.
-        type: string
-        required: false
-      argocd-timeout:
-        description: Maximum Argo CD health wait in seconds.
-        type: number
-        required: false
-        default: 900
       github-app-client-id:
         description: GitHub App client ID installed on retize-core.
         type: string
@@ -53,9 +40,6 @@ on:
       github-app-private-key:
         description: PEM private key for the GitHub App installed on retize-core.
         required: true
-      argocd-auth-token:
-        description: Argo CD authentication token with read access to the application.
-        required: false
     outputs:
       changed:
         description: Whether the workflow created a commit.
@@ -72,7 +56,7 @@ permissions:
 
 jobs:
   update:
-    name: Update retize-core
+    name: Update retize-core values
     runs-on: ubuntu-24.04
     concurrency:
       group: retize-core-${{ inputs.branch }}
@@ -285,52 +269,3 @@ jobs:
           echo "changed=true" >> "$GITHUB_OUTPUT"
           echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "pull-request-url=" >> "$GITHUB_OUTPUT"
-
-      - name: Wait for Argo CD health
-        if: inputs['create-pull-request'] == false
-        working-directory: retize-core
-        env:
-          ARGOCD_SERVER: ${{ inputs['argocd-server'] }}
-          ARGOCD_APPLICATION: ${{ inputs['argocd-application'] }}
-          ARGOCD_AUTH_TOKEN: ${{ secrets.argocd-auth-token }}
-          ARGOCD_TIMEOUT: ${{ inputs['argocd-timeout'] }}
-          TARGET_BRANCH: ${{ inputs.branch }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          application_url="${ARGOCD_SERVER%/}/api/v1/applications/${ARGOCD_APPLICATION}"
-          deploy_commit="$(git rev-parse HEAD)"
-          attempts=$((ARGOCD_TIMEOUT / 5))
-          if [ "$attempts" -lt 1 ]; then
-            echo "argocd-timeout must be at least 5 seconds" >&2
-            exit 1
-          fi
-          for attempt in $(seq 1 "$attempts"); do
-            response="$(curl --fail --silent --show-error \
-              --header "Authorization: Bearer ${ARGOCD_AUTH_TOKEN}" \
-              "$application_url")"
-            sync_status="$(jq -r '.status.sync.status // empty' <<< "$response")"
-            health_status="$(jq -r '.status.health.status // empty' <<< "$response")"
-            mapfile -t revisions < <(jq -r '
-              [(.status.sync.revision? // empty)] + (.status.sync.revisions? // [])
-              | map(select(type == "string" and length > 0))
-              | unique[]
-            ' <<< "$response")
-            echo "attempt=${attempt} revisions=${revisions[*]:-none} sync=${sync_status} health=${health_status}"
-
-            if [[ "$health_status" == "Healthy" && "$sync_status" == "Synced" && "${#revisions[@]}" -gt 0 ]]; then
-              git fetch origin "$TARGET_BRANCH" --quiet 2>/dev/null || true
-              for revision in "${revisions[@]}"; do
-                if [[ "$revision" == "$deploy_commit" ]]; then
-                  exit 0
-                fi
-                if git cat-file -e "${revision}^{commit}" 2>/dev/null && git merge-base --is-ancestor "$deploy_commit" "$revision"; then
-                  exit 0
-                fi
-              done
-            fi
-            sleep 5
-          done
-
-          echo "Argo CD did not report a synced, healthy revision containing ${deploy_commit}." >&2
-          exit 1

@@ -1,4 +1,4 @@
-name: Deploy Development
+name: Deploy to Development
 
 on:
   workflow_call:
@@ -35,19 +35,6 @@ on:
         type: string
         required: false
         default: image
-      argocd-server:
-        description: Argo CD base URL.
-        type: string
-        required: true
-      argocd-application:
-        description: Argo CD Application name to verify.
-        type: string
-        required: true
-      argocd-timeout:
-        description: Maximum Argo CD health wait in seconds.
-        type: number
-        required: false
-        default: 900
       github-app-client-id:
         description: GitHub App client ID installed on retize-core.
         type: string
@@ -55,9 +42,6 @@ on:
     secrets:
       github-app-private-key:
         description: GitHub App private key for retize-core.
-        required: true
-      argocd-auth-token:
-        description: Argo CD read token.
         required: true
     outputs:
       image-path:
@@ -77,6 +61,7 @@ permissions:
 
 jobs:
   build:
+    name: Build and publish signed image
     uses: Retize-io/.github/.github/workflows/build-image.yml@v1
     permissions:
       contents: read
@@ -90,6 +75,7 @@ jobs:
       build-args: ${{ inputs['build-args'] }}
 
   promote:
+    name: Update development image
     needs: build
     uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1
     permissions:
@@ -99,10 +85,6 @@ jobs:
       values-file: ${{ inputs['values-file'] }}
       images: |
         ${{ inputs['image-value-path'] }}=${{ needs.build.outputs.image-path }}
-      argocd-server: ${{ inputs['argocd-server'] }}
-      argocd-application: ${{ inputs['argocd-application'] }}
-      argocd-timeout: ${{ inputs['argocd-timeout'] }}
       github-app-client-id: ${{ inputs['github-app-client-id'] }}
     secrets:
       github-app-private-key: ${{ secrets.github-app-private-key }}
-      argocd-auth-token: ${{ secrets.argocd-auth-token }}
