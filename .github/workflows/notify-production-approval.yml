@@ -71,7 +71,7 @@ jobs:
               {name: "Source commit", value: ("[" + ($commit[0:7]) + "](" + $commit_url + ")"), inline: true},
               {name: "Repository", value: $repository, inline: true},
               {name: "Requested by", value: $actor, inline: true}
-            ], description: "[Review and approve this promotion](" + $url + ") in retize-core."}]}')"
+             ], description: ("[Review and approve this promotion](" + $url + ") in retize-core.")}]}')"
           if [ "${#payload}" -gt 5900 ]; then
             echo "Generated Discord embed exceeds the Discord payload limit" >&2
             exit 1
