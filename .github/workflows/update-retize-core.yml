@@ -178,7 +178,7 @@ jobs:
             yq_path="."
             IFS='.' read -ra path_parts <<< "$value_path"
             for path_part in "${path_parts[@]}"; do
-              yq_path+="[\"$path_part\"]"
+              yq_path+=".\"$path_part\""
             done
 
             export REPOSITORY="$image_repository"

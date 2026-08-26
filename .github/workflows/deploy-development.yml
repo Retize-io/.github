@@ -77,7 +77,7 @@ permissions:
 
 jobs:
   build:
-    uses: Retize-io/.github/.github/workflows/build-image.yml@v1.0.1
+    uses: Retize-io/.github/.github/workflows/build-image.yml@v1.0.3
     permissions:
       contents: read
       packages: write
@@ -91,7 +91,7 @@ jobs:
 
   promote:
     needs: build
-    uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1.0.1
+    uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1.0.3
     permissions:
       contents: read
     with:
