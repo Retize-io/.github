@@ -97,7 +97,7 @@ permissions:
 
 jobs:
   build:
-    uses: Retize-io/.github/.github/workflows/build-image.yml@v1.0.3
+    uses: Retize-io/.github/.github/workflows/build-image.yml@v1
     permissions:
       contents: read
       packages: write
@@ -111,7 +111,7 @@ jobs:
 
   development:
     needs: build
-    uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1.0.3
+    uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1
     permissions:
       contents: read
     with:
@@ -129,7 +129,7 @@ jobs:
 
   production:
     needs: [build, development]
-    uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1.0.3
+    uses: Retize-io/.github/.github/workflows/update-retize-core.yml@v1
     permissions:
       contents: read
     with:
@@ -145,7 +145,7 @@ jobs:
   notify:
     needs: [build, production]
     if: needs.production.outputs.changed == 'true'
-    uses: Retize-io/.github/.github/workflows/notify-production-approval.yml@v1.0.3
+    uses: Retize-io/.github/.github/workflows/notify-production-approval.yml@v1
     permissions:
       contents: read
     with:

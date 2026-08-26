@@ -179,16 +179,20 @@ jobs:
 
             export REPOSITORY="$image_repository"
             export TAG="$image_tag"
-            existing_image="$(docker run --rm \
+            existing_repository="$(docker run --rm \
               --volume "$PWD:/work" \
               --workdir /work \
-              --env REPOSITORY \
-              --env TAG \
               --entrypoint yq \
               mikefarah/yq:4-githubaction@sha256:e1b8c865f299ea6b02910a7ddf147d5d431244d4cc116f89c2148c9f53822906 \
-              eval "(${yq_path} | has(\"repository\")) and (${yq_path} | has(\"tag\"))" "$VALUES_FILE")"
-            if [ "$existing_image" != "true" ]; then
-              echo "Image object with repository and tag was not found at: $value_path" >&2
+              eval -r "${yq_path}.repository // \"\"" "$VALUES_FILE")"
+            existing_tag="$(docker run --rm \
+              --volume "$PWD:/work" \
+              --workdir /work \
+              --entrypoint yq \
+              mikefarah/yq:4-githubaction@sha256:e1b8c865f299ea6b02910a7ddf147d5d431244d4cc116f89c2148c9f53822906 \
+              eval -r "${yq_path}.tag // \"\"" "$VALUES_FILE")"
+            if [ -z "$existing_repository" ] || [ -z "$existing_tag" ]; then
+              echo "Image object with repository and tag was not found at: $value_path (repository='$existing_repository', tag='$existing_tag')" >&2
               exit 1
             fi
 
