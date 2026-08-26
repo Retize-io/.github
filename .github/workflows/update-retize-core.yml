@@ -190,7 +190,7 @@ jobs:
               --env TAG \
               --entrypoint yq \
               mikefarah/yq:4-githubaction@sha256:e1b8c865f299ea6b02910a7ddf147d5d431244d4cc116f89c2148c9f53822906 \
-              eval "(${yq_path} | type == \"!!map\") and (${yq_path} | has(\"repository\") and has(\"tag\"))" "$VALUES_FILE")"
+              eval "(${yq_path} | (type == \"!!map\" and has(\"repository\") and has(\"tag\")))" "$VALUES_FILE")"
             if [ "$existing_image" != "true" ]; then
               echo "Image object with repository and tag was not found at: $value_path" >&2
               exit 1
