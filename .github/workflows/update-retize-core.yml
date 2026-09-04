@@ -129,8 +129,9 @@ jobs:
             exit 1
           }
 
-          declare -A seen_paths=()
-          while IFS='=' read -r value_path image_reference remainder; do
+           declare -A seen_paths=()
+           promotion_version=""
+           while IFS='=' read -r value_path image_reference remainder; do
             if [ -z "$value_path$image_reference$remainder" ]; then
               continue
             fi
@@ -155,12 +156,15 @@ jobs:
               exit 1
             fi
 
-            image_repository="${image_reference%:*}"
-            image_tag="${image_reference##*:}"
+             image_repository="${image_reference%:*}"
+             image_tag="${image_reference##*:}"
             if [ -z "$image_repository" ] || [ -z "$image_tag" ] || [[ "$image_tag" == *[[:space:]]* ]]; then
               echo "Invalid image reference: $image_reference" >&2
-              exit 1
-            fi
+               exit 1
+             fi
+             if [ -z "$promotion_version" ]; then
+               promotion_version="$image_tag"
+             fi
 
             yq_path=".${value_path}"
 
@@ -222,23 +226,33 @@ jobs:
           git config user.email "${APP_SLUG}[bot]@users.noreply.github.com"
           export GH_TOKEN="$APP_TOKEN"
           gh auth setup-git
-          git remote set-url origin "https://github.com/Retize-io/retize-core.git"
+           git remote set-url origin "https://github.com/Retize-io/retize-core.git"
+
+           application_name="${GITHUB_REPOSITORY##*/}"
+           first_mapping="${IMAGE_MAPPINGS%%$'\n'*}"
+           first_image_reference="${first_mapping#*=}"
+           promotion_version="${first_image_reference##*:}"
+           commit_message="$COMMIT_MESSAGE"
+           if [ "$commit_message" = "chore: update application images" ]; then
+             commit_message="deploy(${application_name}): promote ${promotion_version} to ${DEPLOYMENT_ENVIRONMENT}"
+           fi
 
           if git diff --quiet --; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
             echo "pull-request-url=" >> "$GITHUB_OUTPUT"
             exit 0
-          fi
+           fi
 
-          git add -- "$VALUES_FILE"
-          git commit -m "$COMMIT_MESSAGE"
-          if [ "$CREATE_PR" = true ]; then
-            git push origin "HEAD:${PROMOTION_BRANCH}"
+           git add -- "$VALUES_FILE"
+           git commit -m "$commit_message"
+           if [ "$CREATE_PR" = true ]; then
+             git push origin "HEAD:${PROMOTION_BRANCH}"
             pr_url="$(gh pr list --repo Retize-io/retize-core --head "$PROMOTION_BRANCH" --state open --json url --jq '.[0].url // empty')"
             if [ -z "$pr_url" ]; then
-              pr_body=$(printf '## Deployment promotion\n\nEnvironment: `%s`\nValues file: `%s`\n\n### Image updates\n```text\n%s\n```\n\nThis PR was created by `%s` from [%s]. Merge this PR to promote the image.' "$DEPLOYMENT_ENVIRONMENT" "$VALUES_FILE" "$IMAGE_MAPPINGS" "$GITHUB_REPOSITORY" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
-              pr_url="$(gh pr create --repo Retize-io/retize-core --base "$TARGET_BRANCH" --head "$PROMOTION_BRANCH" --title "deploy: promote ${DEPLOYMENT_ENVIRONMENT} images" --body "$pr_body")"
+               pr_body=$(printf '## Deployment promotion\n\nEnvironment: `%s`\nValues file: `%s`\n\n### Image updates\n```text\n%s\n```\n\nThis PR was created by `%s` from [%s]. Merge this PR to promote the image.' "$DEPLOYMENT_ENVIRONMENT" "$VALUES_FILE" "$IMAGE_MAPPINGS" "$GITHUB_REPOSITORY" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+               pr_title="deploy: ${application_name} ${promotion_version} to ${DEPLOYMENT_ENVIRONMENT}"
+               pr_url="$(gh pr create --repo Retize-io/retize-core --base "$TARGET_BRANCH" --head "$PROMOTION_BRANCH" --title "$pr_title" --body "$pr_body")"
             fi
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
