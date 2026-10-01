@@ -58,6 +58,7 @@ jobs:
   update:
     name: Update
     runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
     concurrency:
       group: retize-core-${{ inputs.branch }}
       cancel-in-progress: false
@@ -104,17 +105,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ ! "$VALUES_FILE" =~ ^apps/products/[a-z0-9][a-z0-9_-]*/values-[a-z0-9][a-z0-9_-]*\.ya?ml$ ]]; then
-            echo "values-file must match apps/products/<product>/values-<environment>.yaml" >&2
+          if [[ ! "$VALUES_FILE" =~ ^apps/products/[a-z0-9][a-z0-9_-]*/values-[a-z0-9][a-z0-9_-]*\.ya?ml$ && "$VALUES_FILE" != "apps/data/airflow/values.yaml" ]]; then
+            echo "values-file must match apps/products/<product>/values-<environment>.yaml or apps/data/airflow/values.yaml" >&2
             exit 1
           fi
 
-          products_root="$(realpath -e -- apps/products)"
+          apps_root="$(realpath -e -- apps)"
           canonical_values_file="$(realpath -e -- "$VALUES_FILE")"
           case "$canonical_values_file" in
-            "$products_root"/*) ;;
+            "$apps_root"/products/*|"$apps_root"/data/airflow/values.yaml) ;;
             *)
-              echo "values-file must resolve beneath apps/products/" >&2
+              echo "values-file must resolve beneath the approved apps/products paths or apps/data/airflow/values.yaml" >&2
               exit 1
               ;;
           esac
@@ -238,9 +239,11 @@ jobs:
            fi
 
           if git diff --quiet --; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-            echo "pull-request-url=" >> "$GITHUB_OUTPUT"
+            {
+              echo "changed=false"
+              echo "commit-sha=$(git rev-parse HEAD)"
+              echo "pull-request-url="
+            } >> "$GITHUB_OUTPUT"
             exit 0
            fi
 
@@ -248,15 +251,17 @@ jobs:
            git commit -m "$commit_message"
            if [ "$CREATE_PR" = true ]; then
              git push origin "HEAD:${PROMOTION_BRANCH}"
-            pr_url="$(gh pr list --repo Retize-io/retize-core --head "$PROMOTION_BRANCH" --state open --json url --jq '.[0].url // empty')"
+            pr_url="$(gh pr list --repo Retize-io/retize-core --head "$PROMOTION_BRANCH" --state open --json url --jq ".[0].url // empty")"
             if [ -z "$pr_url" ]; then
-               pr_body=$(printf '## Deployment promotion\n\nEnvironment: `%s`\nValues file: `%s`\n\n### Image updates\n```text\n%s\n```\n\nThis PR was created by `%s` from [%s]. Merge this PR to promote the image.' "$DEPLOYMENT_ENVIRONMENT" "$VALUES_FILE" "$IMAGE_MAPPINGS" "$GITHUB_REPOSITORY" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+               pr_body=$(printf "## Deployment promotion\n\nEnvironment: \`%s\`\nValues file: \`%s\`\n\n### Image updates\n\`\`\`text\n%s\n\`\`\`\n\nThis PR was created by \`%s\` from [%s]. Merge this PR to promote the image." "$DEPLOYMENT_ENVIRONMENT" "$VALUES_FILE" "$IMAGE_MAPPINGS" "$GITHUB_REPOSITORY" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
                pr_title="deploy: ${application_name} ${promotion_version} to ${DEPLOYMENT_ENVIRONMENT}"
                pr_url="$(gh pr create --repo Retize-io/retize-core --base "$TARGET_BRANCH" --head "$PROMOTION_BRANCH" --title "$pr_title" --body "$pr_body")"
             fi
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-            echo "pull-request-url=$pr_url" >> "$GITHUB_OUTPUT"
+            {
+              echo "changed=true"
+              echo "commit-sha=$(git rev-parse HEAD)"
+              echo "pull-request-url=$pr_url"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -280,6 +285,8 @@ jobs:
           done
           [ "$pushed" = true ]
 
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-          echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          echo "pull-request-url=" >> "$GITHUB_OUTPUT"
+          {
+            echo "changed=true"
+            echo "commit-sha=$(git rev-parse HEAD)"
+            echo "pull-request-url="
+          } >> "$GITHUB_OUTPUT"
