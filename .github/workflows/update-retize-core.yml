@@ -239,9 +239,11 @@ jobs:
            fi
 
           if git diff --quiet --; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-            echo "pull-request-url=" >> "$GITHUB_OUTPUT"
+            {
+              echo "changed=false"
+              echo "commit-sha=$(git rev-parse HEAD)"
+              echo "pull-request-url="
+            } >> "$GITHUB_OUTPUT"
             exit 0
            fi
 
@@ -249,15 +251,17 @@ jobs:
            git commit -m "$commit_message"
            if [ "$CREATE_PR" = true ]; then
              git push origin "HEAD:${PROMOTION_BRANCH}"
-            pr_url="$(gh pr list --repo Retize-io/retize-core --head "$PROMOTION_BRANCH" --state open --json url --jq '.[0].url // empty')"
+            pr_url="$(gh pr list --repo Retize-io/retize-core --head "$PROMOTION_BRANCH" --state open --json url --jq ".[0].url // empty")"
             if [ -z "$pr_url" ]; then
                pr_body=$(printf '## Deployment promotion\n\nEnvironment: `%s`\nValues file: `%s`\n\n### Image updates\n```text\n%s\n```\n\nThis PR was created by `%s` from [%s]. Merge this PR to promote the image.' "$DEPLOYMENT_ENVIRONMENT" "$VALUES_FILE" "$IMAGE_MAPPINGS" "$GITHUB_REPOSITORY" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
                pr_title="deploy: ${application_name} ${promotion_version} to ${DEPLOYMENT_ENVIRONMENT}"
                pr_url="$(gh pr create --repo Retize-io/retize-core --base "$TARGET_BRANCH" --head "$PROMOTION_BRANCH" --title "$pr_title" --body "$pr_body")"
             fi
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-            echo "pull-request-url=$pr_url" >> "$GITHUB_OUTPUT"
+            {
+              echo "changed=true"
+              echo "commit-sha=$(git rev-parse HEAD)"
+              echo "pull-request-url=$pr_url"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -281,6 +285,8 @@ jobs:
           done
           [ "$pushed" = true ]
 
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-          echo "commit-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          echo "pull-request-url=" >> "$GITHUB_OUTPUT"
+          {
+            echo "changed=true"
+            echo "commit-sha=$(git rev-parse HEAD)"
+            echo "pull-request-url="
+          } >> "$GITHUB_OUTPUT"
